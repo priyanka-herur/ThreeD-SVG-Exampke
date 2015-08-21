@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            background-color: #ffffff;
+            margin: 0;
+            overflow: hidden;
+        }
+
+    </style>
+</head>
+
+<body>
+    <script src="js/three.min.js"></script>
+    <script type="text/javascript" src="js/Detector.js"></script>
+    <script type="text/javascript" src="js/jquery.min.js"></script>
+    <script type="text/javascript" src="js/leap.min.js"></script>
+    <script type="text/javascript" src="js/LeapCameraControls.js"></script>
+    <script type="text/javascript" src="js/LeapObjectControls.js"></script>
+    <script src="js/renderers/Projector.js"></script>
+    <script src="js/renderers/SVGRenderer.js"></script>
+    <script src="js/libs/stats.min.js"></script>
+    <script src="js/OrbitControls.js"></script>
+    <script src="js/ThreeCSG.js"></script>
+    <script>
+        var container,
+            info,
+            camera,
+            scene,
+            light,
+            geometry,
+            mesh,
+            projector,
+            renderer,
+            controls;
+        objects = [];
+
+        // dom
+        container = document.createElement('div');
+        document.body.appendChild(container);
+
+        // info
+        info = document.createElement('div');
+        info.style.position = 'absolute';
+        info.style.top = '10px';
+        info.style.width = '100%';
+        info.style.textAlign = 'center';
+        info.innerHTML = "Three JS, SVGRenderer";
+        container.appendChild(info);
+
+        // renderer
+        renderer = new THREE.SVGRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        container.appendChild(renderer.domElement);
+
+        // scene
+        scene = new THREE.Scene();
+
+        // camera
+        camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 10000);
+        camera.position.set(0, 300, 500);
+        scene.add(camera);
+
+        cameraControls = new THREE.LeapCameraControls(camera);
+
+        //controls
+        controls = new THREE.OrbitControls(camera);
+
+        // light
+        scene.add(new THREE.AmbientLight(0x222222));
+
+        // light
+        light = new THREE.PointLight(0xaaaaaa);
+        light.position = camera.position;
+        scene.add(light);
+
+        // geometry
+        geometry = new THREE.BoxGeometry(100, 100, 100);
+
+        // material
+        material = new THREE.MeshNormalMaterial({
+            shading: THREE.SmoothShading
+        });
+
+        // mesh
+        mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(-50, 0, 0);
+        mesh.name = "SVG Box";
+        mesh.callback = function() {
+            info.innerHTML = this.name;
+        }
+        var cSegments = 10;
+        objects.push(mesh);
+
+        var normalMaterial = new THREE.MeshNormalMaterial({
+            shading: THREE.SmoothShading,
+            overdraw: 0.5
+        }); //Working fine
+        var basicMaterial = new THREE.MeshBasicMaterial({
+            color: 0xF15462,
+            shading: THREE.SmoothShading,
+            overdraw: 0.1,
+            vertexColors: THREE.NoColors,
+            transparent: false
+        }); //no 3d
+        var phongMaterial = new THREE.MeshPhongMaterial({
+            color: 0x122f3e,
+            ambient: 0xfcfcfc,
+            emissive: 0x7a1f27,
+            specular: 0xffffff,
+            vertexColors: THREE.NoColors,
+            shininess: 30,
+            shading: THREE.SmoothShading
+        });
+        var lambertMaterial = new THREE.MeshLambertMaterial({
+            color: 0xdc2434,
+            ambient: 0xfcfcfc,
+            emissive: 0x7a1f27,
+            vertexColors: THREE.NoColors,
+            shading: THREE.SmoothShading
+        });
+
+        var materialNormal = new THREE.MeshBasicMaterial({
+            color: 0x000000,
+            wireframe: false,
+            transparent: false,
+            vertexColors: THREE.NoColors
+        });
+
+        var cubeGeometry = new THREE.BoxGeometry(250, 100, 180, 1, 1, 1);
+        var cubeMesh = new THREE.Mesh(cubeGeometry);
+        var cubeMesh2 = new THREE.Mesh(cubeGeometry, normalMaterial);
+        scene.add(cubeMesh2);
+        cubeMesh.position.set(50, 50, 0)
+        var cubeBSP = new ThreeBSP(cubeMesh);
+
+        var sphereGeometry = new THREE.SphereGeometry(70, 32, 32);
+        var sphereMesh = new THREE.Mesh(sphereGeometry);
+        var sphereBSP = new ThreeBSP(sphereMesh);
+        var newBSP = sphereBSP.subtract(cubeBSP);
+        var newMesh = newBSP.toMesh(normalMaterial);
+        newMesh.position.set(180, 60, 0);
+
+        var geometry = new THREE.TorusGeometry(15, 6, 16, 100, Math.PI * 1.3);
+        geometry.applyMatrix(new THREE.Matrix4().makeRotationZ(29));
+        var torus = new THREE.Mesh(geometry, normalMaterial);
+        torus.position.set(250, 40, 0);
+        var geo = new THREE.Geometry();
+        THREE.GeometryUtils.merge(geo, newMesh);
+        THREE.GeometryUtils.merge(geo, torus);
+        var mergedMesh = new THREE.Mesh(geo, normalMaterial);
+
+        cubeControls = new THREE.LeapObjectControls(camera, cubeMesh2);
+
+        cubeControls.rotateEnabled = true;
+        cubeControls.rotateSpeed = 3;
+        cubeControls.rotateHands = 1;
+        cubeControls.rotateFingers = [2, 3];
+
+        cubeControls.scaleEnabled = true;
+        cubeControls.scaleSpeed = 3;
+        cubeControls.scaleHands = 1;
+        cubeControls.scaleFingers = [4, 5];
+
+        cubeControls.panEnabled = true;
+        cubeControls.panSpeed = 3;
+        cubeControls.panHands = 2;
+        cubeControls.panFingers = [6, 12];
+        cubeControls.panRightHanded = false;
+
+        projector = new THREE.Projector();
+
+        // listeners
+        document.addEventListener('mousedown', onDocumentMouseDown, false)
+
+        // keyboard handler
+        function onDocumentMouseDown(event) {
+
+            event.preventDefault();
+
+            var vector = new THREE.Vector3(
+                (event.clientX / window.innerWidth) * 2 - 1, -(event.clientY / window.innerHeight) * 2 + 1,
+                0.5);
+
+            projector.unprojectVector(vector, camera);
+            // new THREE.Raycaster( vector, end );
+            //var ray = new THREE.Ray( camera.position, vector.sub( camera.position ).normalize() );
+            var ray = new THREE.Raycaster(camera.position, vector.sub(camera.position).normalize());
+            //THREE.Raycaster
+
+            var intersects = ray.intersectObjects(objects);
+
+            if (intersects.length > 0) {
+                //console.log("i.o:",intersects[0].object);
+
+                intersects[0].object.callback();
+            }
+
+        }
+
+        // render
+        function render() {
+
+            controls.update()
+
+            renderer.render(scene, camera);
+        }
+
+        // animate            
+        (function animate() {
+
+            requestAnimationFrame(animate);
+            render();
+        }());
+        var startX = -camera.position.x;
+        var startY = -camera.position.y;
+        var startZ = camera.position.z;
+        var state = null;
+        var startFrame = null;
+
+
+        Leap.loop(function(frame) {
+            if (frame.valid) {
+                if (state == null) {
+                    startFrame = frame;
+                    startX = -camera.position.x;
+                    startY = -camera.position.y;
+                    startZ = camera.position.z;
+                    state = 'moving';
+                } else if (state == 'moving') {
+                    var t = startFrame.translation(frame);
+                    camera.position.set(-(t[0] * 10 + startX), -(t[1] * 10 + startY), t[2] * 10 + startZ);
+                }
+            }
+
+            cubeControls.update(frame);
+            cameraControls.update(frame); // rotating, zooming & panning
+            render();
+            renderer.render(scene, camera);
+        });
+
+    </script>
+</body>
+
+</html>
